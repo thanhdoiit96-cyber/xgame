@@ -122,7 +122,23 @@ input::placeholder { color: #a295b0; }
 .invite > strong { font-size: 30px; color: var(--lime); letter-spacing: .2em; margin-left: .2em; }
 .secondary { padding: 9px 10px; border: 1px solid #54416d; border-radius: 9px; background: #322546; color: var(--text); font-weight: 700; font-size: 13px; display: flex; gap: 7px; align-items: center; justify-content: center; }
 .secondary:hover { background: #453263; }
+.secondary.selected { border-color: var(--lime); background: rgba(194, 244, 119, 0.12); color: #f4ffd5; }
+.toggle-lock { width: 100%; margin-top: 10px; }
+.lock-input-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 8px; }
+.lock-input-row input { margin: 0; }
 .invite input { margin-top: 4px; height: 39px; }
+.room-list { display: grid; gap: 10px; margin-top: 16px; }
+.room-item { width: 100%; display: grid; gap: 8px; padding: 12px 12px 11px; border-radius: 12px; border: 1px solid #493d63; background: #1c152a; color: var(--text); text-align: left; }
+.room-item:hover { border-color: var(--purple); background: #211b31; }
+.room-item.locked { border-color: rgba(255, 214, 181, 0.7); }
+.room-item-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.room-item strong { display: block; font-size: 22px; letter-spacing: .12em; font-weight: 800; }
+.room-item small { color: var(--muted); font-size: 12px; }
+.room-item-meta { color: var(--muted); font-size: 12px; }
+.status-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-size: 11px; font-weight: 800; padding: 5px 8px; }
+.status-badge.success { background: rgba(194, 244, 119, 0.16); color: #dffca8; }
+.status-badge.warn { background: rgba(255, 211, 125, 0.14); color: #ffdda1; }
+.status-badge.danger { background: rgba(255, 191, 143, 0.14); color: #ffd8b8; }
 .timer { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; background: #382953; color: #f5eaff; border-radius: 8px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .secret { color: #e8dcff; background: repeating-linear-gradient(-45deg,#2d2241,#2d2241 12px,#302546 12px,#302546 24px); border: 1px dashed #a688db; border-radius: 12px; width: 100%; min-height: 80px; display: flex; align-items: center; justify-content: center; gap: 9px; font-weight: 700; margin: 15px 0 20px; padding: 12px; }
 .secret.revealed { color: var(--ink); background: var(--lime); border: 1px solid var(--lime); font-weight: 900; font-size: 24px; }

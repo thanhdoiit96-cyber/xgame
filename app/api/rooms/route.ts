@@ -9,14 +9,21 @@ const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
 async function run(request: Request, body: Record<string, unknown> = {}) {
-  const action = request.method === "GET" ? "status" : body.action;
+  const url = new URL(request.url);
+  const action = request.method === "GET" ? (url.searchParams.get("action") ?? "status") : body.action;
   const store = getRoomStore();
+
+  if (action === "list") {
+    const rows = await store.list?.();
+    return json({ rooms: rows ?? [] });
+  }
 
   if (action === "create") {
     const now = Date.now();
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = roomCode();
-      const { room, token } = createRoom(code, String(body.name ?? ""));
+      const lock = typeof body.key === "string" ? body.key : typeof body.lock === "string" ? body.lock : "";
+      const { room, token } = createRoom(code, String(body.name ?? ""), lock);
       const record = { code, state: JSON.stringify(room), version: 0, expires: now + roomTtl, token };
       if (!(await store.create(record))) continue;
       return json({ token, room: snapshot(room, identify(room, token), now) }, 201);
@@ -24,7 +31,6 @@ async function run(request: Request, body: Record<string, unknown> = {}) {
     return json({ error: "Chưa tạo được mã phòng. Hãy thử lại." }, 503);
   }
 
-  const url = new URL(request.url);
   const rawCode = String(url.searchParams.get("code") ?? body.code ?? "");
   const code = rawCode.trim().toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, 5);
   if (!/^[A-HJ-NP-Z2-9]{5}$/.test(code)) return json({ error: "Mã phòng phải có 5 ký tự hợp lệ." }, 400);

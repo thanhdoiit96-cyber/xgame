@@ -16,10 +16,11 @@ type Room = {
   phase: "lobby" | "clue" | "vote" | "rescue" | "result";
   players: Player[]; deadline: number | null; notice?: string; word?: string;
   difficulty: Difficulty; clues?: Clue[]; twoClues?: boolean; clueStage?: number; clueCount?: number; sentClue?: boolean;
-  voteCount?: number; votedFor?: string; result?: Result; rescue?: { canGuess: boolean; name: string };
+  voteCount?: number; votedFor?: string; result?: Result; rescue?: { canGuess: boolean; name: string }; locked?: boolean; lockCode?: string;
 };
 type Session = { code: string; token: string };
-type Reply = { room?: Room; token?: string; left?: boolean; error?: string };
+type RoomList = { code: string; playerCount: number; slots: number; hostName: string; phase: string; locked: boolean; lockCode?: string; status: "playing" | "waiting" };
+type Reply = { room?: Room; rooms?: RoomList[]; token?: string; left?: boolean; error?: string };
 type IconName = "bolt" | "help" | "plus" | "enter" | "users" | "clock" | "eye" | "copy" | "arrow" | "check" | "chat" | "vote" | "trophy" | "lock";
 const paths: Record<IconName, ReactNode> = {
   bolt: <path d="m13 2-9 12h7l-1 8 10-12h-7l1-8Z"/>,
@@ -90,8 +91,14 @@ export default function Game() {
   const [tab, setTab] = useState<"create" | "join">("create");
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [roomKey, setRoomKey] = useState("");
+  const [joinKey, setJoinKey] = useState("");
+  const [lockCreate, setLockCreate] = useState(false);
+  const [lockJoin, setLockJoin] = useState(false);
+  const [lockDraft, setLockDraft] = useState("");
   const [session, setSession] = useState<Session>();
   const [room, setRoom] = useState<Room>();
+  const [availableRooms, setAvailableRooms] = useState<RoomList[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [offline, setOffline] = useState(false);
@@ -119,6 +126,20 @@ export default function Game() {
       const saved = JSON.parse(sessionStorage.getItem("alq-session") ?? "null") as Session | null;
       if (saved?.token && (!invited || saved.code === invited)) setSession(saved);
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    async function fetchRooms() {
+      try {
+        const reply = await api({ action: "list" });
+        setAvailableRooms(reply.rooms ?? []);
+      } catch {
+        setAvailableRooms([]);
+      }
+    }
+    fetchRooms();
+    const timer = setInterval(fetchRooms, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -157,6 +178,11 @@ export default function Game() {
     setTarget("");
     setGuess("");
   }, [room?.round, room?.code]);
+
+  useEffect(() => {
+    if (room?.lockCode) setLockDraft(room.lockCode);
+    else if (!room?.locked) setLockDraft("");
+  }, [room?.code, room?.locked, room?.lockCode]);
 
   useEffect(() => { setClue(""); }, [room?.round, room?.code, room?.clueStage]);
 
@@ -202,7 +228,15 @@ export default function Game() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    send(tab, { name });
+    const nextKey = tab === "create" ? roomKey : joinKey;
+    send(tab, { name, key: nextKey });
+  }
+
+  function generateRoomLock() {
+    const next = String(Math.floor(100000 + Math.random() * 900000));
+    setRoomKey(next);
+    setLockDraft(next);
+    return next;
   }
 
   async function copyLink() {
@@ -258,10 +292,47 @@ export default function Game() {
             {tab === "join" && <>
               <label htmlFor="code">Mã phòng</label>
               <input id="code" className="code-input" value={code} onChange={e => setCode(codeInput(e.target.value))} placeholder="Ví dụ: K7V2M" minLength={5} maxLength={5} autoCapitalize="characters" autoComplete="off" required/>
+              <button type="button" className={`secondary toggle-lock ${lockJoin ? "selected" : ""}`} onClick={() => setLockJoin(v => !v)}>
+                <Icon name={lockJoin ? "lock" : "enter"} size={16}/> {lockJoin ? "Vào phòng có khóa" : "Tôi muốn vào phòng có khóa"}
+              </button>
+              {lockJoin && <>
+                <label htmlFor="joinKey">Mã khóa phòng</label>
+                <input id="joinKey" value={joinKey} onChange={e => setJoinKey(e.target.value.replace(/\D/g, "").slice(0, 6))} maxLength={6} inputMode="numeric" placeholder="Ví dụ: 482913" autoComplete="off"/>
+              </>}
+              <div className="room-list">
+                <div className="people-title"><h2>Phòng đang mở</h2><span>{availableRooms.length}</span></div>
+                {availableRooms.length ? availableRooms.map(item => (
+                  <button key={item.code} type="button" className={`room-item ${item.locked ? "locked" : "open"}`} onClick={() => { setCode(item.code); setJoinKey(item.lockCode || ""); setLockJoin(Boolean(item.lockCode)); }}>
+                    <div className="room-item-main">
+                      <div>
+                        <strong>{item.code}</strong>
+                        <small>{item.hostName}</small>
+                      </div>
+                      <span className={`status-badge ${item.status === "playing" ? "warn" : "success"}`}>{item.status === "playing" ? "Đang chơi" : "Chờ người"}</span>
+                    </div>
+                    <span className="room-item-meta">{item.playerCount}/5 · {item.slots} chỗ còn{item.lockCode ? ` · Khóa ${item.lockCode}` : ""}</span>
+                  </button>
+                )) : <p className="muted">Chưa có phòng nào đang mở. Hãy tạo phòng mới.</p>}
+              </div>
+            </>}
+            {tab === "create" && <>
+              <button type="button" className={`secondary toggle-lock ${lockCreate ? "selected" : ""}`} onClick={() => {
+                setLockCreate(v => !v);
+                if (!lockCreate) generateRoomLock();
+              }}>
+                <Icon name={lockCreate ? "lock" : "plus"} size={16}/> {lockCreate ? "Đã bật khóa phòng" : "Tạo phòng có khóa"}
+              </button>
+              {lockCreate && <>
+                <label htmlFor="roomKey">Mã khóa phòng</label>
+                <div className="lock-input-row">
+                  <input id="roomKey" value={roomKey} onChange={e => setRoomKey(e.target.value.replace(/\D/g, "").slice(0, 6))} maxLength={6} inputMode="numeric" placeholder="123456" autoComplete="off" readOnly={false} />
+                  <button type="button" className="secondary" onClick={generateRoomLock}>Tạo mới</button>
+                </div>
+              </>}
             </>}
             {error && <p className="alert" role="alert">{error}</p>}
             {offline && <p className="alert" role="status">Đang kết nối lại phòng…</p>}
-            <button className="primary" disabled={pending || Boolean(session) || !name.trim() || (tab === "join" && code.length !== 5)}>{pending || session ? "Đang kết nối…" : tab === "create" ? "Tạo phòng ngay" : "Vào phòng"}<Icon name="arrow" size={18}/></button>
+            <button className="primary" disabled={pending || Boolean(session) || !name.trim() || (tab === "join" && code.length !== 5) || (tab === "join" && lockJoin && joinKey.length !== 6)}>{pending || session ? "Đang kết nối…" : tab === "create" ? "Tạo phòng ngay" : "Vào phòng"}<Icon name="arrow" size={18}/></button>
             <div className="form-note">Vào game bằng biệt danh</div>
           </form>
         </section>
@@ -356,6 +427,16 @@ export default function Game() {
                 {difficulties.map(option => <button type="button" key={option.key} className={room.difficulty === option.key ? "selected" : ""} aria-pressed={room.difficulty === option.key} disabled={pending} onClick={() => send("settings", { difficulty: option.key })}>{option.label}</button>)}
               </div> : <strong>{difficulties.find(option => option.key === room.difficulty)?.label}</strong>}
               <p className="muted">{difficulties.find(option => option.key === room.difficulty)?.description}</p>
+              {host && <div className="lock-settings">
+                <h3>Khóa phòng</h3>
+                <button type="button" className={`secondary ${room.locked ? "selected" : ""}`} onClick={() => send("settings", { lock: room.locked ? "" : (lockDraft || String(Math.floor(100000 + Math.random() * 900000))) })} disabled={pending}>
+                  <Icon name={room.locked ? "lock" : "plus"} size={16}/>{room.locked ? "Tắt khóa" : "Bật khóa"}
+                </button>
+                {room.locked && <div className="lock-input-row">
+                  <input value={lockDraft} onChange={e => setLockDraft(e.target.value.replace(/\D/g, "").slice(0, 6))} maxLength={6} inputMode="numeric" placeholder="123456"/>
+                  <button type="button" className="secondary" onClick={() => send("settings", { lock: lockDraft || "" })} disabled={pending || lockDraft.length !== 6}>Lưu</button>
+                </div>}
+              </div>}
             </div>}
             <div className="invite">
               <span>Mã phòng</span><strong>{room.code}</strong>

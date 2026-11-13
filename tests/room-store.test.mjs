@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createRoomRecord, getRoomRecord, saveRoomRecord } from '../lib/room-store.mjs';
+import { createRoomRecord, getRoomRecord, listRoomRecords, saveRoomRecord } from '../lib/room-store.mjs';
 
 test('createRoomRecord stores new room and preserves expiry metadata', () => {
   const now = Date.now();
@@ -52,4 +52,28 @@ test('rooms with players stay available after expiry while waiting or playing', 
   const refreshed = getRoomRecord('KL12M');
   assert.ok(refreshed);
   assert.equal(JSON.parse(refreshed.state).players.length, 1);
+});
+
+test('listRoomRecords exposes active rooms with slot counts and host metadata', () => {
+  const now = Date.now();
+  const first = createRoomRecord('LM34N', 'Evan', now);
+  const second = createRoomRecord('NO56P', 'Faye', now);
+
+  const roomOne = JSON.parse(first.state);
+  roomOne.phase = 'lobby';
+  saveRoomRecord('LM34N', roomOne, first.version, now + 60_000);
+
+  const roomTwo = JSON.parse(second.state);
+  roomTwo.phase = 'result';
+  saveRoomRecord('NO56P', roomTwo, second.version, now + 60_000);
+
+  const rooms = listRoomRecords(now);
+  const targets = new Map(rooms.map(entry => [entry.code, entry]));
+
+  assert.ok(targets.has('LM34N'));
+  assert.ok(targets.has('NO56P'));
+  assert.equal(targets.get('LM34N').slots, 4);
+  assert.equal(targets.get('LM34N').playerCount, 1);
+  assert.equal(targets.get('LM34N').hostName, 'Evan');
+  assert.equal(targets.get('NO56P').playerCount, 1);
 });
