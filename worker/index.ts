@@ -1,6 +1,8 @@
 import handler from "vinext/server/fetch-handler";
 import { runWithConnectorBinding } from "../lib/connector-context";
 import type { ConnectorBinding } from "../lib/connector-contract.mjs";
+import { runWithRoomStore } from "../lib/storage-context.mjs";
+import { createD1RoomStore } from "./room-storage.mjs";
 
 const worker = {
   fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
@@ -23,7 +25,8 @@ const worker = {
         },
       };
     }
-    return runWithConnectorBinding(binding, () => handler.fetch(request, env, ctx));
+    return runWithRoomStore(env.DB ? createD1RoomStore(env.DB) : undefined,
+      () => runWithConnectorBinding(binding, () => handler.fetch(request, env, ctx)));
   },
 };
 

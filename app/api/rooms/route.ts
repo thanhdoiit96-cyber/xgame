@@ -1,51 +1,25 @@
-import { act, advance, identify, roomCode, roomTtl, snapshot } from "../../../lib/game.mjs";
-import {
-  createRoomRecord,
-  deleteRoomRecord,
-  deleteRoomRecordFromDb,
-  getRoomRecord,
-  getRoomRecordFromDb,
-  isRoomActive,
-  pruneExpiredRoomRecords,
-  saveRoomRecord,
-  upsertRoomRecordToDb,
-} from "../../../lib/room-store.mjs";
+import { act, advance, createRoom, identify, roomCode, roomTtl, snapshot } from "../../../lib/game.mjs";
+import { isRoomActive } from "../../../lib/room-store.mjs";
+import { getRoomStore } from "../../../lib/storage-context.mjs";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
-async function readRoom(code: string) {
-  const persisted = await getRoomRecordFromDb(code);
-  if (persisted) return persisted;
-  return getRoomRecord(code);
-}
-
-async function writeRoom(code: string, room: Record<string, unknown>, version: number, expires: number, token: string) {
-  const persisted = await upsertRoomRecordToDb(code, room, version, expires, token);
-  const memorySaved = saveRoomRecord(code, room, version, expires);
-  return persisted || memorySaved;
-}
-
-async function removeRoom(code: string, version: number) {
-  const persisted = await deleteRoomRecordFromDb(code, version);
-  const memoryRemoved = deleteRoomRecord(code, version);
-  return persisted || memoryRemoved;
-}
-
 async function run(request: Request, body: Record<string, unknown> = {}) {
   const action = request.method === "GET" ? "status" : body.action;
+  const store = getRoomStore();
 
   if (action === "create") {
     const now = Date.now();
-    pruneExpiredRoomRecords(now);
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = roomCode();
-      const record = createRoomRecord(code, String(body.name ?? ""), now);
-      const room = JSON.parse(record.state);
-      await writeRoom(code, room, record.version, record.expires, record.token);
-      return json({ token: record.token, room: snapshot(room, identify(room, record.token), now) }, 201);
+      const { room, token } = createRoom(code, String(body.name ?? ""));
+      const record = { code, state: JSON.stringify(room), version: 0, expires: now + roomTtl, token };
+      if (!(await store.create(record))) continue;
+      return json({ token, room: snapshot(room, identify(room, token), now) }, 201);
     }
     return json({ error: "Chưa tạo được mã phòng. Hãy thử lại." }, 503);
   }
@@ -53,11 +27,11 @@ async function run(request: Request, body: Record<string, unknown> = {}) {
   const url = new URL(request.url);
   const code = String(url.searchParams.get("code") ?? body.code ?? "").trim().toUpperCase();
   if (!/^[A-HJ-NP-Z2-9]{5}$/.test(code)) return json({ error: "Mã phòng phải có 5 ký tự hợp lệ." }, 400);
-  const token = request.headers.get("Authorization")?.slice(7) ?? "";
+  const token = request.headers.get("Authorization")?.match(/^Bearer (.+)$/i)?.[1] ?? "";
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const now = Date.now();
-    const row = await readRoom(code);
+    const row = await store.read(code);
     if (!row) return json({ error: "Phòng không tồn tại hoặc đã hết hạn." }, 404);
 
     const room = JSON.parse(row.state);
@@ -66,7 +40,7 @@ async function run(request: Request, body: Record<string, unknown> = {}) {
     const changed = advance(room, now);
     if (action === "status") {
       const player = identify(room, token);
-      if (changed && !(await writeRoom(code, room, row.version, row.expires, row.token))) continue;
+      if (changed && !(await store.save(code, room, row.version, row.expires))) continue;
       return json({ room: snapshot(room, player, now) });
     }
 
@@ -74,8 +48,8 @@ async function run(request: Request, body: Record<string, unknown> = {}) {
     advance(room, now);
 
     if (result.left && !room.players.length) {
-      if (!(await removeRoom(code, row.version))) continue;
-    } else if (!(await writeRoom(code, room, row.version, now + roomTtl, row.token))) {
+      if (!(await store.remove(code, row.version))) continue;
+    } else if (!(await store.save(code, room, row.version, now + roomTtl))) {
       continue;
     }
 
