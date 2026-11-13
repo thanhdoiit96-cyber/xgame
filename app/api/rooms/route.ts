@@ -25,7 +25,8 @@ async function run(request: Request, body: Record<string, unknown> = {}) {
   }
 
   const url = new URL(request.url);
-  const code = String(url.searchParams.get("code") ?? body.code ?? "").trim().toUpperCase();
+  const rawCode = String(url.searchParams.get("code") ?? body.code ?? "");
+  const code = rawCode.trim().toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, 5);
   if (!/^[A-HJ-NP-Z2-9]{5}$/.test(code)) return json({ error: "Mã phòng phải có 5 ký tự hợp lệ." }, 400);
   const token = request.headers.get("Authorization")?.match(/^Bearer (.+)$/i)?.[1] ?? "";
 

@@ -55,7 +55,8 @@ const difficulties = [
 
 const avatars = ["◉", "✿", "◆", "✦", "☻"];
 const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-const codeInput = (value: string) => value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, 5);
+const normalizeRoomCode = (value: string) => value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, 5);
+const codeInput = normalizeRoomCode;
 
 async function api(body?: Record<string, unknown>, session?: Session): Promise<Reply> {
   const url = session && !body ? `/api/rooms?code=${session.code}` : "/api/rooms";
