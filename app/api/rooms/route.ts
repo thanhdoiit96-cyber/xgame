@@ -1,10 +1,38 @@
 import { act, advance, identify, roomCode, roomTtl, snapshot } from "../../../lib/game.mjs";
-import { createRoomRecord, deleteRoomRecord, getRoomRecord, isRoomActive, pruneExpiredRoomRecords, saveRoomRecord } from "../../../lib/room-store.mjs";
+import {
+  createRoomRecord,
+  deleteRoomRecord,
+  deleteRoomRecordFromDb,
+  getRoomRecord,
+  getRoomRecordFromDb,
+  isRoomActive,
+  pruneExpiredRoomRecords,
+  saveRoomRecord,
+  upsertRoomRecordToDb,
+} from "../../../lib/room-store.mjs";
 
 export const dynamic = "force-dynamic";
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+
+async function readRoom(code: string) {
+  const persisted = await getRoomRecordFromDb(code);
+  if (persisted) return persisted;
+  return getRoomRecord(code);
+}
+
+async function writeRoom(code: string, room: Record<string, unknown>, version: number, expires: number, token: string) {
+  const persisted = await upsertRoomRecordToDb(code, room, version, expires, token);
+  const memorySaved = saveRoomRecord(code, room, version, expires);
+  return persisted || memorySaved;
+}
+
+async function removeRoom(code: string, version: number) {
+  const persisted = await deleteRoomRecordFromDb(code, version);
+  const memoryRemoved = deleteRoomRecord(code, version);
+  return persisted || memoryRemoved;
+}
 
 async function run(request: Request, body: Record<string, unknown> = {}) {
   const action = request.method === "GET" ? "status" : body.action;
@@ -16,6 +44,7 @@ async function run(request: Request, body: Record<string, unknown> = {}) {
       const code = roomCode();
       const record = createRoomRecord(code, String(body.name ?? ""), now);
       const room = JSON.parse(record.state);
+      await writeRoom(code, room, record.version, record.expires, record.token);
       return json({ token: record.token, room: snapshot(room, identify(room, record.token), now) }, 201);
     }
     return json({ error: "Chưa tạo được mã phòng. Hãy thử lại." }, 503);
@@ -28,7 +57,7 @@ async function run(request: Request, body: Record<string, unknown> = {}) {
 
   for (let attempt = 0; attempt < 8; attempt++) {
     const now = Date.now();
-    const row = getRoomRecord(code);
+    const row = await readRoom(code);
     if (!row) return json({ error: "Phòng không tồn tại hoặc đã hết hạn." }, 404);
 
     const room = JSON.parse(row.state);
@@ -37,7 +66,7 @@ async function run(request: Request, body: Record<string, unknown> = {}) {
     const changed = advance(room, now);
     if (action === "status") {
       const player = identify(room, token);
-      if (changed && !saveRoomRecord(code, room, row.version, row.expires)) continue;
+      if (changed && !(await writeRoom(code, room, row.version, row.expires, row.token))) continue;
       return json({ room: snapshot(room, player, now) });
     }
 
@@ -45,8 +74,8 @@ async function run(request: Request, body: Record<string, unknown> = {}) {
     advance(room, now);
 
     if (result.left && !room.players.length) {
-      if (!deleteRoomRecord(code, row.version)) continue;
-    } else if (!saveRoomRecord(code, room, row.version, now + roomTtl)) {
+      if (!(await removeRoom(code, row.version))) continue;
+    } else if (!(await writeRoom(code, room, row.version, now + roomTtl, row.token))) {
       continue;
     }
 

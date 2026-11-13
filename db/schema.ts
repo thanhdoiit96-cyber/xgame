@@ -5,4 +5,5 @@ export const rooms = sqliteTable("rooms", {
   state: text().notNull(),
   version: integer().notNull(),
   expires: integer().notNull(),
+  token: text().notNull(),
 }, table => [index("rooms_expires").on(table.expires)]);
