@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1794544966771,
+      "tag": "0000_room_storage",
+      "breakpoints": true
+    }
+  ]
+}
