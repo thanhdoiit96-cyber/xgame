@@ -253,7 +253,7 @@ node --test tests/room-store.test.mjs
 npm run lint
 ```
 
-`dev/build/start` thực tế gọi `next dev/build/start`; `vercel.json` chọn framework nextjs. `next.config.ts` đang rỗng. Trên Vercel cần hai biến `ROOM_STORAGE_URL` và `ROOM_STORAGE_SECRET`; không có RAM fallback production. `npm run db:check` kiểm tra Worker/DB thật; `.env.example` là mẫu cấu hình server-only. `wrangler.storage.jsonc` phục vụ Worker lưu trữ riêng, phải điền Database ID trước khi dùng CLI.
+`dev/build/start` thực tế gọi `next dev/build/start`; `vercel.json` chọn framework nextjs. `next.config.ts` đang rỗng. Trên Vercel cần hai biến `ROOM_STORAGE_URL` và `ROOM_STORAGE_SECRET`; không có RAM fallback production. `npm run db:check` kiểm tra Worker/DB thật; `.env.example` là mẫu cấu hình server-only. `wrangler.jsonc` phục vụ Worker lưu trữ riêng, phải điền Database ID trước khi dùng CLI.
 
 Đường Cloudflare tồn tại riêng qua Vite/Vinext, `worker/index.ts`, `.openai/hosting.json` (D1 binding DB; R2 tắt), `scripts/run-framework.mjs` và script build/install. `run-framework.mjs` hỗ trợ dev/build theo profile portable hoặc managed-linux nhưng không được npm scripts hiện tại gọi. Không dùng hướng dẫn README về `dist/server/wrangler.json` cho build Next mà chưa kiểm tra artifact thực tế. Chưa build hoặc triển khai trong lần lập tài liệu này.
 

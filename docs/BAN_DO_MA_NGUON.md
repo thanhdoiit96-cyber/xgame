@@ -9,7 +9,7 @@ Các hash trong danh mục nền bên dưới là trước bản sửa storage; 
 | [lib/storage-context.mjs](../lib/storage-context.mjs) | Chọn store, chặn RAM production, context binding theo request |
 | [lib/remote-room-store.mjs](../lib/remote-room-store.mjs) | Client HTTPS từ Vercel tới Worker |
 | [worker/room-storage.mjs](../worker/room-storage.mjs) | Worker độc lập, xác thực secret, SQL kiểm soát version |
-| [wrangler.storage.jsonc](../wrangler.storage.jsonc) | Cấu hình CLI deploy storage Worker và D1 |
+| [wrangler.jsonc](../wrangler.jsonc) | Cấu hình CLI deploy storage Worker và D1 |
 | [.env.example](../.env.example) | Mẫu biến môi trường server-only |
 | [db/bootstrap.sql](../db/bootstrap.sql) | Schema đầy đủ cho database mới qua dashboard |
 | [scripts/check-room-storage.mjs](../scripts/check-room-storage.mjs) | Kiểm tra xác thực/binding/schema thật |

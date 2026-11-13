@@ -143,7 +143,7 @@ npx wrangler login
 npx wrangler d1 create xgame-db
 ```
 
-Điền Database ID trả về vào `database_id` trong [wrangler.storage.jsonc](../wrangler.storage.jsonc). Sau đó:
+Điền Database ID trả về vào `database_id` trong [wrangler.jsonc](../wrangler.jsonc). Sau đó:
 
 ```sh
 npm run db:migrate:remote
@@ -164,25 +164,27 @@ Nếu Cloudflare clone repository và tự chạy build/deploy, vào Worker **xg
 | Root directory | Thư mục gốc repository, nơi có package.json |
 | Build command | `npm run storage:build` |
 | Deploy command | `npm run storage:deploy` |
-| Worker name | `xgame`, khớp `name` trong wrangler.storage.jsonc |
+| Worker name | `xgame`, khớp `name` trong wrangler.jsonc |
 
-Build chỉ kiểm tra cú pháp Worker; Wrangler sẽ bundle khi deploy. Vercel vẫn giữ `npm run build` cho website. Nếu bật build nhánh không phải production, tắt trong lần cấu hình đầu hoặc cấu hình lệnh upload riêng cũng chỉ rõ `--config wrangler.storage.jsonc`; không để lệnh Wrangler tự dò framework.
+Build chỉ kiểm tra cú pháp Worker; Wrangler sẽ bundle khi deploy. Vercel vẫn giữ `npm run build` cho website. Nếu bật build nhánh không phải production, tắt trong lần cấu hình đầu hoặc cấu hình lệnh upload riêng cũng chỉ rõ `--config wrangler.jsonc`; không để lệnh Wrangler tự dò framework.
 
 Trước khi retry:
 
-1. Đảm bảo commit trên Git có `worker/room-storage.mjs`, `wrangler.storage.jsonc` và scripts `storage:*` trong package.json.
-2. Trong D1 database → Settings, copy **Database ID** thay `REPLACE_WITH_YOUR_D1_DATABASE_ID` trong wrangler.storage.jsonc; commit thay đổi. Đây là ID tài nguyên, không phải secret.
+1. Đảm bảo commit trên Git có `worker/room-storage.mjs`, `wrangler.jsonc` và scripts `storage:*` trong package.json.
+2. Trong D1 database → Settings, copy **Database ID** thay `REPLACE_WITH_YOUR_D1_DATABASE_ID` trong wrangler.jsonc; commit thay đổi. Đây là ID tài nguyên, không phải secret.
 3. Đảm bảo bảng rooms đã được tạo theo bước 1; đặt secret trong **Worker runtime Settings → Variables and Secrets**, không chỉ trong Build variables.
 4. Push code rồi retry build. Worker URL sẽ có dạng `https://xgame.<subdomain>.workers.dev`; dùng URL thực tế này cho `ROOM_STORAGE_URL` trên Vercel.
 
 Nếu Worker dashboard của bạn có tên khác, sửa `name` trong file config cho khớp. File hiện dùng `xgame` theo log build ngày 13/11/2026; tên `xgame-room-storage` trong ví dụ dashboard ở trên chỉ là tên gợi ý khi tạo mới.
 
-**Lỗi ERESOLVE trong log đã gửi:** `next build` đã thành công. `npx wrangler deploy` không nhận file config có tên riêng nên tự phát hiện Next.js và chạy OpenNext migrate. Bước tự thiết lập cố cài Wrangler 4.161.0, yêu cầu workers-types v5, trong khi dự án khóa workers-types v4. Với kiến trúc website Vercel + storage Worker, không cần bước migrate này. Dùng lệnh deploy có `--config wrangler.storage.jsonc`; không cần `--force`, `--legacy-peer-deps` hoặc nâng hàng loạt dependency để xử lý lỗi này.
+**Lỗi ERESOLVE trong log đã gửi:** `next build` đã thành công. Bản cũ đặt cấu hình tên `wrangler.storage.jsonc`, nên lệnh `npx wrangler deploy` không tự tìm được file này và chạy OpenNext migrate. Bước tự thiết lập cố cài Wrangler 4.161.0, yêu cầu workers-types v5, trong khi dự án khóa workers-types v4. Bản sửa đổi tên thành **`wrangler.jsonc` ở gốc repository**, giữ nguyên Database ID đã điền. Vì vậy lệnh mặc định cũng tìm đúng `worker/room-storage.mjs`; không cần `--force`, `--legacy-peer-deps` hoặc nâng dependency.
+
+Nếu log vẫn hiện `@opennextjs/cloudflare migrate` sau bản sửa, kiểm tra SHA commit của build và Root directory: deployment phải dùng commit có `wrangler.jsonc` và chạy tại thư mục chứa file này. Chạy lại deployment cũ không tự đưa code mới vào. Khi đổi config tên file, cập nhật mọi lệnh dashboard còn ghi `--config wrangler.storage.jsonc` sang `--config wrangler.jsonc` hoặc dùng `npm run storage:deploy`.
 
 Lệnh tương đương nếu muốn nhập trực tiếp vào ô Deploy command:
 
 ```sh
-npx wrangler deploy --config wrangler.storage.jsonc
+npx wrangler deploy --config wrangler.jsonc
 ```
 
 Nguồn: [Cloudflare Workers Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).

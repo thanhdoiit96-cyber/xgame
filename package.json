@@ -13,10 +13,10 @@
     "db:generate": "drizzle-kit generate",
     "test": "node --test tests/*.test.mjs",
     "db:check": "node --env-file-if-exists=.env.local scripts/check-room-storage.mjs",
-    "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config wrangler.storage.jsonc",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config wrangler.jsonc",
     "storage:build": "node --check worker/room-storage.mjs",
-    "storage:deploy": "wrangler deploy --config wrangler.storage.jsonc",
-    "storage:secret": "wrangler secret put ROOM_STORAGE_SECRET --config wrangler.storage.jsonc"
+    "storage:deploy": "wrangler deploy --config wrangler.jsonc",
+    "storage:secret": "wrangler secret put ROOM_STORAGE_SECRET --config wrangler.jsonc"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

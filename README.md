@@ -38,9 +38,9 @@ Website và `/api/rooms` chạy Next.js trên Vercel. API gọi Worker `worker/r
 4. Trên Vercel đặt `ROOM_STORAGE_URL` là URL Worker và `ROOM_STORAGE_SECRET` giống Worker; không dùng tiền tố `NEXT_PUBLIC_`.
 5. Deploy code mới sau khi thêm biến môi trường. Các bước dashboard, CLI và chẩn đoán nằm trong hướng dẫn liên kết ở trên.
 
-Không cần API token quản trị Cloudflare trong Vercel hoặc đổi DNS. `.openai/hosting.json` không tạo binding D1 cho Vercel. File `wrangler.storage.jsonc` dành cho triển khai Worker lưu trữ qua CLI; thay placeholder Database ID trước khi dùng.
+Không cần API token quản trị Cloudflare trong Vercel hoặc đổi DNS. `.openai/hosting.json` không tạo binding D1 cho Vercel. File `wrangler.jsonc` dành cho triển khai Worker lưu trữ qua CLI; thay placeholder Database ID trước khi dùng.
 
-Nếu deploy Worker qua Git trên Cloudflare: đặt **Build command = `npm run storage:build`**, **Deploy command = `npm run storage:deploy`**. Config hiện dùng tên Worker `xgame`; tên này phải khớp dashboard. Không dùng lệnh trần `npx wrangler deploy` vì sẽ tự dò Next.js và kích hoạt thiết lập OpenNext. Xem mục 6.1 trong hướng dẫn để xử lý log ERESOLVE.
+Nếu deploy Worker qua Git trên Cloudflare: đặt **Build command = `npm run storage:build`**, **Deploy command = `npm run storage:deploy`**. Config hiện dùng tên Worker `xgame`; tên này phải khớp dashboard. File mặc định `wrangler.jsonc` cũng giúp lệnh `npx wrangler deploy` nhận đúng Worker lưu trữ, không kích hoạt OpenNext. Xem mục 6.1 trong hướng dẫn để xử lý log ERESOLVE.
 
 Storage lỗi trả 503, không âm thầm tạo phòng RAM. D1 dùng điều kiện version nguyên tử để tránh mất cập nhật đồng thời; mã trùng không ghi đè phòng hiện có.
 
