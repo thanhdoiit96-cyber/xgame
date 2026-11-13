@@ -8,7 +8,7 @@
     {
       "binding": "DB",
       "database_name": "xgame-db",
-      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "database_id": "0f8f9a46-aac9-4740-ae01-405985bcb4c1",
       "migrations_dir": "drizzle"
     }
   ]
