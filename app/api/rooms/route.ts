@@ -1,5 +1,5 @@
 import { act, advance, identify, roomCode, roomTtl, snapshot } from "../../../lib/game.mjs";
-import { createRoomRecord, deleteRoomRecord, getRoomRecord, pruneExpiredRoomRecords, saveRoomRecord } from "../../../lib/room-store.mjs";
+import { createRoomRecord, deleteRoomRecord, getRoomRecord, isRoomActive, pruneExpiredRoomRecords, saveRoomRecord } from "../../../lib/room-store.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +29,11 @@ async function run(request: Request, body: Record<string, unknown> = {}) {
   for (let attempt = 0; attempt < 8; attempt++) {
     const now = Date.now();
     const row = getRoomRecord(code);
-    if (!row || row.expires <= now) return json({ error: "Phòng không tồn tại hoặc đã hết hạn." }, 404);
+    if (!row) return json({ error: "Phòng không tồn tại hoặc đã hết hạn." }, 404);
 
     const room = JSON.parse(row.state);
+    if (row.expires <= now && !isRoomActive(room)) return json({ error: "Phòng không tồn tại hoặc đã hết hạn." }, 404);
+
     const changed = advance(room, now);
     if (action === "status") {
       const player = identify(room, token);

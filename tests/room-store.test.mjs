@@ -32,3 +32,24 @@ test('saveRoomRecord updates version and keeps latest payload', () => {
   assert.equal(refreshed.version, 1);
   assert.equal(JSON.parse(refreshed.state).phase, 'result');
 });
+
+test('idle rooms stay alive for a full day before expiring', () => {
+  const now = Date.now();
+  const record = createRoomRecord('GH56I', 'Carol', now);
+
+  const ttlMs = record.expires - now;
+  assert.ok(ttlMs >= 24 * 60 * 60 * 1000, 'Room TTL should be at least 24 hours for idle rooms');
+});
+
+test('rooms with players stay available after expiry while waiting or playing', () => {
+  const now = Date.now();
+  const record = createRoomRecord('KL12M', 'Dana', now);
+  const room = JSON.parse(record.state);
+
+  const updated = saveRoomRecord('KL12M', room, record.version, now - 1_000);
+  assert.equal(updated, true);
+
+  const refreshed = getRoomRecord('KL12M');
+  assert.ok(refreshed);
+  assert.equal(JSON.parse(refreshed.state).players.length, 1);
+});
